@@ -1,0 +1,78 @@
+@startuml C4_Container_Future2.0_Architecture
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+title Диаграмма контейнеров для компании Будущее 2.0
+
+Person(medical_staff, "Медицинский персонал", "Врачи, медсестры, операторы клиник")
+Person(business_analysts, "Бизнес-аналитики", "Пользователи аналитики из всех доменов")
+Person(data_scientists, "Специалисты по данным", "Специалисты по ИИ/ML")
+Person(fintech_users, "Пользователи финтеха", "Клиенты банка, финансовые аналитики")
+
+System_Boundary(medical_domain, "Клиники") {
+    Container(medical_app, "Приложение медицинской помощи", "React, Node.js", "Современное веб-приложение для ухода за пациентами и операций клиник")
+    Container(medical_api, "API медицинских сервисов", "Java Spring Boot", "REST API для медицинских операций и данных пациентов")
+    Container(medical_db, "База данных медицины", "PostgreSQL", "Записи пациентов, медицинские истории, данные клиник")
+    Container(medical_files, "Хранилище медицинских файлов", "S3-compatible", "Медицинские изображения, документы, результаты анализов")
+}
+
+System_Boundary(fintech_domain, "Финтех компания") {
+    Container(fintech_app, "Банковское приложение", "React", "Веб и мобильный банковский интерфейс")
+    Container(fintech_api, "API банковских сервисов", "Golang, Java", "REST API для банковских операций")
+    Container(fintech_db, "База данных банка", "PostgreSQL", "Счета, транзакции, кредитные данные")
+    Container(payment_gateway, "Платежный шлюз", "Golang", "Обработка платежей и интеграция")
+}
+
+System_Boundary(ai_domain, "Компания ИИ-сервисов") {
+    Container(ai_platform, "Платформа ИИ/ML", "Python, FastAPI", "Модели машинного обучения и ИИ-сервисы")
+    Container(ai_training, "Сервис обучения моделей", "Python, TensorFlow/PyTorch", "Обучение ИИ-моделей и версионирование")
+    Container(ai_storage, "Хранилище ИИ-моделей", "MLflow, S3", "Обученные модели и трекинг экспериментов")
+}
+
+System_Boundary(analytics_domain, "Головной офис") {
+    Container(data_portal, "Портал самообслуживания данных", "React, TypeScript", "Современный BI-портал для самостоятельной аналитики")
+    Container(analytics_api, "API аналитики", "Python, FastAPI", "API для доступа к данным и генерации отчетов")
+    Container(data_warehouse, "Современное хранилище данных", "Snowflake/BigQuery", "Оптимизированное хранилище аналитических данных")
+    Container(data_mart, "Доменные витрины данных", "Snowflake/BigQuery", "Агрегированные данные по доменам")
+}
+
+System_Boundary(integration_layer, "Слой интеграции") {
+    Container(api_gateway, "API-шлюз", "Kong/AWS API Gateway", "Централизованное управление API и безопасность")
+    Container(message_broker, "Брокер сообщений", "Apache Kafka", "Асинхронное взаимодействие между доменами")
+}
+
+' Взаимодействие пользователей
+Rel(medical_staff, medical_app, "Использует", "HTTPS")
+Rel(business_analysts, data_portal, "Создает отчеты", "HTTPS")
+Rel(data_scientists, ai_platform, "Разрабатывает модели", "HTTPS")
+Rel(fintech_users, fintech_app, "Банковские операции", "HTTPS")
+
+' Внутренние связи доменов
+Rel(medical_app, medical_api, "Вызовы API", "HTTPS/REST")
+Rel(medical_api, medical_db, "Чтение/Запись", "SQL")
+Rel(medical_api, medical_files, "Сохранение/Получение", "S3 API")
+
+Rel(fintech_app, fintech_api, "Вызовы API", "HTTPS/REST")
+Rel(fintech_api, fintech_db, "Чтение/Запись", "SQL")
+Rel(fintech_api, payment_gateway, "Обработка платежей", "HTTPS/REST")
+
+Rel(ai_platform, ai_training, "Обучение моделей", "gRPC")
+Rel(ai_training, ai_storage, "Сохранение моделей", "MLflow API")
+
+Rel(data_portal, analytics_api, "Запросы данных", "HTTPS/REST")
+Rel(analytics_api, data_warehouse, "Запросы данных", "SQL")
+Rel(analytics_api, data_mart, "Запросы агрегированных данных", "SQL")
+
+' Межсервисные интеграции через слой интеграции
+Rel(medical_api, api_gateway, "Публикует API", "HTTPS")
+Rel(fintech_api, api_gateway, "Публикует API", "HTTPS")
+Rel(ai_platform, api_gateway, "Публикует API", "HTTPS")
+Rel(analytics_api, api_gateway, "Публикует API", "HTTPS")
+
+Rel(medical_api, message_broker, "Публикует события", "Kafka")
+Rel(fintech_api, message_broker, "Публикует события", "Kafka")
+Rel(ai_platform, message_broker, "Публикует события", "Kafka")
+
+
+
+SHOW_LEGEND()
+@enduml
