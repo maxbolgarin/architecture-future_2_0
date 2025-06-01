@@ -1,0 +1,102 @@
+@startuml C4_Container_Future2.0_Architecture
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+title Диаграмма контейнеров для компании Будущее 2.0
+
+Person(medical_staff, "Медицинский персонал", "Врачи, медсестры, операторы клиник")
+Person(business_analysts, "Бизнес-аналитики", "Пользователи аналитики из всех доменов")
+Person(data_scientists, "Специалисты по данным", "Специалисты по ИИ/ML")
+Person(fintech_users, "Пользователи финтеха", "Клиенты банка, финансовые аналитики")
+
+System_Boundary(security_services, "Сервисы безопасности") {
+    Container(sso_service, "SSO / Identity Provider", "Keycloak", "Централизованное управление аутентификацией и авторизацией пользователей")
+}
+
+System_Boundary(medical_domain, "Клиники") {
+    Container(medical_app, "Приложение медицинской помощи", "React, Node.js", "Современное веб-приложение для ухода за пациентами и операций клиник (заменяет PowerBuilder)")
+    Container(medical_api, "API медицинских сервисов", "Golang", "REST API для медицинских операций, данных пациентов. Содержит бизнес-логику, ранее находившуюся в DWH.")
+    ContainerDb(medical_db, "База данных медицины", "PostgreSQL", "Записи пациентов, медицинские истории, данные клиник. Принимает данные из Legacy DWH.")
+    ContainerDb(medical_files, "Хранилище медицинских файлов", "S3-compatible", "Медицинские изображения, документы, результаты анализов")
+}
+
+System_Boundary(fintech_domain, "Финтех компания") {
+    Container(fintech_app, "Банковское приложение", "React", "Веб и мобильный банковский интерфейс")
+    Container(fintech_api, "API банковских сервисов", "Golang", "REST API для банковских операций. Содержит бизнес-логику, ранее находившуюся в DWH.")
+    ContainerDb(fintech_db, "База данных банка ", "PostgreSQL", "Счета, транзакции, кредитные данные. Принимает данные из Legacy DWH.")
+    Container(payment_gateway, "Платежный шлюз", "Golang", "Обработка платежей и интеграция")
+}
+
+System_Boundary(ai_domain, "Компания ИИ-сервисов") {
+    Container(ai_platform, "Платформа ИИ/ML", "Python, FastAPI", "Модели машинного обучения и ИИ-сервисы")
+    Container(ai_training, "Сервис обучения моделей", "Python, TensorFlow/PyTorch", "Обучение ИИ-моделей и версионирование")
+    ContainerDb(ai_storage, "Хранилище ИИ-моделей", "MLflow, S3", "Обученные модели и трекинг экспериментов")
+}
+
+System_Boundary(analytics_domain, "Головной офис") {
+    Container(data_portal, "BI-портал", "React, TypeScript", "BI-портал для самостоятельной аналитики (заменяет кастомизации Power BI)")
+    Container(analytics_api, "API аналитики", "Python, FastAPI", "API для доступа к данным и генерации отчетов")
+    ContainerDb(data_warehouse, "Хранилище аналитических данных", "Snowflake/BigQuery", "Оптимизированное хранилище аналитических данных. Заменяет аналитическую часть Legacy DWH.")
+    ContainerDb(data_marts, "Доменные витрины данных", "Snowflake/BigQuery", "Агрегированные данные по доменам для портала самообслуживания")
+    Container(etl_elt_processes, "ETL/ELT Процессы и Трансформации", "Apache Airflow, dbt, Python/Spark", "Извлечение, трансформация и загрузка данных из операционных систем и Legacy DWH в аналитическое хранилище. Включает логику ФЛК и трансформаций из Legacy ESB.")
+}
+
+System_Boundary(integration_layer, "Слой интеграции") {
+    Container(api_gateway, "API-шлюз", "Kong/AWS API Gateway", "Централизованное управление API, маршрутизация, безопасность (интеграция с SSO)")
+    Container(message_broker, "Брокер сообщений", "Apache Kafka", "Асинхронное взаимодействие между доменами, публикация событий")
+}
+
+System_Boundary(legacy_systems, "Устаревшие системы") {
+    ContainerDb(legacy_dwh, "Legacy DWH", "MS SQL Server 2008, PowerBuilder", "Существующее DWH. Данные мигрируют, бизнес-логика переносится в доменные API, интерфейс заменяется.")
+    Container(legacy_esb, "Legacy ESB", "Apache Camel", "Старая шина данных. Логика ФЛК, трансформаций и процессов переносится в ETL/ELT, доменные API или новые сервисы.")
+}
+
+' Взаимодействие пользователей с SSO и приложениями
+Rel(medical_staff, medical_app, "Использует", "HTTPS")
+Rel(medical_app, sso_service, "Аутентификация", "OAuth2/OIDC")
+
+Rel(business_analysts, data_portal, "Создает отчеты", "HTTPS")
+Rel(data_portal, sso_service, "Аутентификация", "OAuth2/OIDC")
+
+Rel(data_scientists, ai_platform, "Разрабатывает модели", "HTTPS")
+Rel(ai_platform, sso_service, "Аутентификация", "OAuth2/OIDC")
+
+Rel(fintech_users, fintech_app, "Банковские операции", "HTTPS")
+Rel(fintech_app, sso_service, "Аутентификация", "OAuth2/OIDC")
+
+' Внутренние связи доменов
+Rel(medical_app, medical_api, "Вызовы API", "HTTPS/REST")
+Rel(medical_api, medical_db, "Чтение/Запись", "SQL")
+Rel(medical_api, medical_files, "Сохранение/Получение", "S3 API")
+
+Rel(fintech_app, fintech_api, "Вызовы API", "HTTPS/REST")
+Rel(fintech_api, fintech_db, "Чтение/Запись", "SQL")
+Rel(fintech_api, payment_gateway, "Обработка платежей", "HTTPS/REST")
+
+Rel(ai_platform, ai_training, "Обучение моделей", "gRPC/REST")
+Rel(ai_training, ai_storage, "Сохранение моделей", "MLflow API")
+Rel(ai_platform, medical_files, "Получает данные для обучения (снимки)", "S3 API")
+Rel(ai_platform, medical_api, "Получает данные для обучения (структурированные)", "HTTPS/REST")
+
+Rel(data_portal, analytics_api, "Запросы данных", "HTTPS/REST")
+Rel(analytics_api, data_warehouse, "Запросы данных", "SQL")
+Rel(analytics_api, data_marts, "Запросы агрегированных данных", "SQL")
+
+' Межсервисные интеграции через слой интеграции
+Rel(medical_api, api_gateway, "Публикует API", "HTTPS")
+Rel(fintech_api, api_gateway, "Публикует API", "HTTPS")
+Rel(ai_platform, api_gateway, "Публикует API", "HTTPS")
+Rel(analytics_api, api_gateway, "Публикует API", "HTTPS")
+
+Rel(api_gateway, sso_service, "Валидация токенов", "OAuth2/OIDC")
+
+Rel(medical_api, message_broker, "Публикует события (изменения данных пациентов, события клиник)", "Kafka Protocol")
+Rel(fintech_api, message_broker, "Публикует события (финансовые транзакции, изменения счетов)", "Kafka Protocol")
+Rel(ai_platform, message_broker, "Публикует события (результаты анализа ИИ, готовность моделей)", "Kafka Protocol")
+
+Rel(medical_db, etl_elt_processes, "Извлечение данных (после миграции из DWH)", "SQL/CDC")
+Rel(fintech_db, etl_elt_processes, "Извлечение данных (после миграции из DWH)", "SQL/CDC")
+Rel(message_broker, etl_elt_processes, "Потребляет события для потоковой загрузки/обработки", "Kafka Protocol")
+Rel(etl_elt_processes, data_warehouse, "Загружает и трансформирует данные", "SQL/API")
+Rel(data_warehouse, data_marts, "Обновляет витрины данных", "SQL")
+
+@enduml
